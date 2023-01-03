@@ -28,7 +28,7 @@ class ThreeDVect():
         return self.x * v.x + self.y * v.y + self.z * v.z
 
     def __repr__(self):
-        return f'{self.x} | {self.y} | {self.z}'
+        return f'|| {self.x} | {self.y} | {self.z} ||'
 
 
 class ThreeDMatriX():
@@ -62,7 +62,7 @@ class ThreeDMatriX():
         return ThreeDMatriX(u1, u2, u3)
     
     def __repr__(self):
-        return f'{self.u.x} | {self.u.y} | {self.u.z}\n{self.v.x} | {self.v.y} | {self.v.z}\n{self.w.x} | {self.w.y} | {self.w.z}'
+        return f'|| {self.u.x} | {self.u.y} | {self.u.z} ||\n|| {self.v.x} | {self.v.y} | {self.v.z} ||\n|| {self.w.x} | {self.w.y} | {self.w.z}||'
 
 class Cube():
 
@@ -72,13 +72,13 @@ class Cube():
     
     def get_vect_face(self, u: ThreeDVect):
         if u.x == self.og.x: x = 1
-        elif u.x == self.og.x + self.edge_l: x = -1
+        elif u.x == self.og.x + self.edge_l - 1: x = -1
         else: x = 0
         if u.y == self.og.y: y = 1
-        elif u.y == self.og.y + self.edge_l: y = -1
+        elif u.y == self.og.y + self.edge_l - 1: y = -1
         else: y = 0
         if u.z == self.og.z: z = 1
-        elif u.z == self.og.z + self.edge_l: z = -1
+        elif u.z == self.og.z + self.edge_l - 1: z = -1
         else: z = 0
         return ThreeDVect(x, y, z)
     
@@ -112,10 +112,9 @@ if __name__ == '__main__':
     
     fold = [[['X'] * CUBE_LENGTH for _ in range(CUBE_LENGTH)] for _ in range(CUBE_LENGTH)]
     
-    p_grid = ThreeDVect(199, 0, 0)
-    p_cube = ThreeDVect(1, 1, 0)
+    p_grid = ThreeDVect(199, -1, 0)
+    p_cube = ThreeDVect(50, 0, 0)
     d_grid = ThreeDVect(0, 1, 0)
-    d_cube = d_grid
     initial_rot_grid = ROTATIONS[-VEC_Z]
     cube = Cube(CUBE_LENGTH)
     visited = set() 
@@ -123,25 +122,26 @@ if __name__ == '__main__':
     trans_grid_cube = ID
     faces = {}
     folded = {}
-    
     faces[cube.get_vect_face(p_cube)] = trans_grid_cube
+    
     while True:
         next_d_grid = rot_grid * d_grid
-        next_p_grid = p_grid + d_grid
+        next_p_grid = p_grid + next_d_grid
         i, j = next_p_grid.x, next_p_grid.y
-        #print(f'{rot_grid, next_p_grid, p_grid, d_grid}dwe')
         if (i, j) not in visited and i < len(lines) and len(lines[i]) > j and lines[i][j] != ' ':
-            #print(i, j)
+            print(i, j)
             p_grid = next_p_grid
             d_grid = next_d_grid
-            d_cube = (rot_grid @ trans_grid_cube) * d_cube
+            d_cube = trans_grid_cube * d_grid
             next_p_cube = p_cube + d_cube
             if cube.is_edge(next_p_cube):
-                trans_grid_cube @= ROTATIONS[cube.get_vect_face(p_cube) * d_cube]
+                print(f'{i, j, d_grid, p_cube} edge')
+                trans_grid_cube @= ROTATIONS[d_cube * cube.get_vect_face(p_cube)]
                 d_cube = (trans_grid_cube @ rot_grid) * d_cube
                 next_p_cube += d_cube
                 faces[cube.get_vect_face(next_p_cube)] = trans_grid_cube
             p_cube = next_p_cube
+            print(p_cube)
             fold[p_cube.x][p_cube.y][p_cube.z] = lines[i][j]
             folded[p_cube] = (i, j)
             rot_grid = initial_rot_grid
@@ -150,8 +150,8 @@ if __name__ == '__main__':
         else:
             break
     
-        
-    print((ROTATIONS[VEC_Z]) * d_grid, ((ROTATIONS[VEC_Z] @ ROTATIONS[VEC_Z]) * d_grid))
+    print(cube.get_vect_face(ThreeDVect(4, 21,0)))
+    
             
 
 
