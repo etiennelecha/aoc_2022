@@ -3,7 +3,7 @@ from collections import deque
 
 class ThreeDVect():
     
-    def __init__(self, x=0, y=0, z=0):
+    def __init__(self, x:int=0, y:int=0, z:int=0):
         self.x = x
         self.y = y
         self.z = z
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     
     fold = [[['X'] * CUBE_LENGTH for _ in range(CUBE_LENGTH)] for _ in range(CUBE_LENGTH)]
 
-    def move(u0:ThreeDVect, steps:int, dir:ThreeDVect, cube: Cube):
+    def move(u0:ThreeDVect, steps:int, dir:ThreeDVect, cube:Cube):
         step = 0
         u = u0
         while step < steps:
@@ -134,7 +134,7 @@ if __name__ == '__main__':
             #print(f'pos:{u}, step:{step}, dir:{dir}')
             if fold[u1.x][u1.y][u1.z] == '#':
                 break
-            if cube.is_edge(u1):
+            if fold[u1.x][u1.y][u1.z] == 'X':
                 axis = dir * cube.get_vect_face(u)
                 dir_trans = ROTATIONS[axis] * dir
                 #print(f'edge:{u1}, dir:{dir}')
@@ -143,6 +143,7 @@ if __name__ == '__main__':
                 b = matrix(faces[cube.get_vect_face(u1)])
                 dir = (b @ a) * dir
                 #print(f'after_edge:{u1}, new_dir:{dir}, {b, a}')
+                #dir = dir_trans
             u = u1
             step += 1
         return u, dir
@@ -215,11 +216,10 @@ if __name__ == '__main__':
     
     x, y = unfolded[u]
     d = inverse_matrix(faces[cube.get_vect_face(u)]) * dir
-
+    print(d, x, y)
     print((x + 1) * 1000 + (y + 1) * 4 + DIRECTIONS[(d.x, d.y)])
-    
-            
-
+    print(instructions[-1])
+    print(lines[0][49], lines[0][50])
 
     
 
