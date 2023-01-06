@@ -8,7 +8,6 @@ for cube in cubess:
     x, y, z = re.findall(r'\d+', cube)
     cubes.append((int(x), int(y), int(z)))
 
-
 class PartI:
 
     def exterior_faces(self, cubes):

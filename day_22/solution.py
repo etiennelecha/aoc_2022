@@ -39,6 +39,8 @@ class ThreeDVect():
 class ThreeDMatriX():
 
     def __init__(self, u:ThreeDVect, v:ThreeDVect, w:ThreeDVect):
+        # a matrix is just a collection of vectors IN LINE (easier to formalute vector mult)
+        # so 1st line is u, 2nd v, 3rd w
         self.u = u
         self.v = v
         self.w = w
@@ -60,14 +62,24 @@ class ThreeDMatriX():
         return ThreeDVect(self.u | v, self.v | v, self.w | v)
     
     def __matmul__(self, b):
+        # component cij of a @ b is sum over k aik * bkj, so we need to transpose b to
+        # use scalar product def     
         b = b.transpose()
         u1 = ThreeDVect(self.u | b.u, self.u | b.v, self.u | b.w)
         u2 = ThreeDVect(self.v | b.u, self.v | b.v, self.v | b.w)
         u3 = ThreeDVect(self.w | b.u, self.w | b.v, self.w | b.w)
         return ThreeDMatriX(u1, u2, u3)
     
+    def __pow__(self, k):
+        ans = ID
+        for _ in range(k):
+            ans @= self
+        return ans
+
     def __repr__(self):
-        return f'|| {self.u.x} | {self.u.y} | {self.u.z} ||\n|| {self.v.x} | {self.v.y} | {self.v.z} ||\n|| {self.w.x} | {self.w.y} | {self.w.z}||'
+        return  f'|| {self.u.x} | {self.u.y} | {self.u.z} ||\n' +\
+                f'|| {self.v.x} | {self.v.y} | {self.v.z} ||\n' +\
+                f'|| {self.w.x} | {self.w.y} | {self.w.z} ||'
 
 class Cube():
 
@@ -95,17 +107,18 @@ class Cube():
 VEC_X = ThreeDVect(1, 0, 0)
 VEC_Y = ThreeDVect(0, 1, 0)
 VEC_Z = ThreeDVect(0, 0, 1)
+ID = ThreeDMatriX(VEC_X, VEC_Y, VEC_Z)
 
 ROTATIONS = {VEC_X : ThreeDMatriX(VEC_X, -VEC_Z, VEC_Y),
             VEC_Y: ThreeDMatriX(VEC_Z, VEC_Y, -VEC_X),
-            VEC_Z: ThreeDMatriX(-VEC_Y, VEC_X, VEC_Z),
-            -VEC_X : ThreeDMatriX(VEC_X, VEC_Z, -VEC_Y),
-            -VEC_Y: ThreeDMatriX(-VEC_Z, VEC_Y, VEC_X),
-            -VEC_Z: ThreeDMatriX(VEC_Y, -VEC_X, VEC_Z)}
-AXIS = {v: k for k, v in ROTATIONS.items()}
-ID = ThreeDMatriX(VEC_X, VEC_Y, VEC_Z)
+            VEC_Z: ThreeDMatriX(-VEC_Y, VEC_X, VEC_Z)}
+ROTATIONS[-VEC_X] = ROTATIONS[VEC_X] ** 3
+ROTATIONS[-VEC_Y] = ROTATIONS[VEC_Y] ** 3
+ROTATIONS[-VEC_Z] = ROTATIONS[VEC_Z] ** 3
 
-DIRECTIONS = {(0, 1): 0, (1, 0): 1, (0, -1): 2, (-1, 0): 3}
+AXIS = {v: k for k, v in ROTATIONS.items()}
+
+DIRECTIONS = {(int(0), int(1)): 0, (1, 0): 1, (0, -1): 2, (-1, 0): 3}
 CUBE_LENGTH = 52
 
 class PartII:
@@ -168,32 +181,28 @@ class PartII:
                 visited.add((i, j))
                 rot_grid = initial_rot_grid
 
-            elif rot_grid != ROTATIONS[VEC_Z] @ ROTATIONS[VEC_Z]:
+            elif rot_grid != ROTATIONS[VEC_Z] ** 2:
                 rot_grid @= ROTATIONS[VEC_Z]
             else:
                 break
         
         return fold, folded, unfolded, faces
     
-    def walk(self, faces, fold:list[list[list[str]]], u0:ThreeDVect, steps:int, dir:ThreeDVect):
+    def walk(self, fold:list[list[list[str]]], u0:ThreeDVect, steps:int, dir:ThreeDVect):
         step = 0
         u = u0
         cube = Cube(CUBE_LENGTH)
         while step < steps:
             u1 = u + dir
-            #print(f'pos:{u}, step:{step}, dir:{dir}')
             if fold[u1.x][u1.y][u1.z] == '#':
                 break
             if fold[u1.x][u1.y][u1.z] == 'X':
                 axis = dir * cube.get_vect_face(u)
                 dir_trans = ROTATIONS[axis] * dir
-                #print(f'edge:{u1}, dir:{dir}')
                 u1 += dir_trans
-                a = self.inverse_matrix(faces[cube.get_vect_face(u)])
-                b = self.matrix(faces[cube.get_vect_face(u1)])
-                dir = (b @ a) * dir
-                #print(f'after_edge:{u1}, new_dir:{dir}, {b, a}')
-                #dir = dir_trans
+                if fold[u1.x][u1.y][u1.z] == '#':
+                    break
+                dir = dir_trans
             u = u1
             step += 1
         return u, dir
@@ -207,22 +216,18 @@ class PartII:
         start_pos = folded[(0, 50)]
         cube = Cube(CUBE_LENGTH)
         start_dir = self.matrix(faces[cube.get_vect_face(start_pos)]) * ThreeDVect(0, 1, 0)
-        u, dir = self.walk(faces, fold, start_pos, start_steps, start_dir)
-
+        u, dir = self.walk(fold, start_pos, start_steps, start_dir)
         for instruction in instructions:
             rot, steps = instruction; steps = int(steps)
             if rot == 'L':
                 dir = ROTATIONS[cube.get_vect_face(u)] * dir
             else:
                 dir = ROTATIONS[-cube.get_vect_face(u)] * dir
-            u, dir = self.walk(faces, fold, u, steps, dir)    
+            u, dir = self.walk(fold, u, steps, dir)
         
         x, y = unfolded[u]
         d = self.inverse_matrix(faces[cube.get_vect_face(u)]) * dir
-        print(d, x, y)
-        print((x + 1) * 1000 + (y + 1) * 4 + DIRECTIONS[(d.x, d.y)])
-        print(instructions[-1])
-        print(lines[0][49], lines[0][50])
+        return (x + 1) * 1000 + (y + 1) * 4 + DIRECTIONS[(d.x, d.y)]
 
 
 if __name__ == '__main__':
