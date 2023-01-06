@@ -2,10 +2,11 @@ import re
 from collections import deque
 
 with open('aoc_day18.txt', 'r') as f:
-    cubes = f.read().splitlines()
-for i, cube in enumerate(cubes):
+    cubess = f.read().splitlines()
+cubes = []
+for cube in cubess:
     x, y, z = re.findall(r'\d+', cube)
-    cubes[i] = (int(x), int(y), int(z))
+    cubes.append((int(x), int(y), int(z)))
 
 
 class PartI:
@@ -60,8 +61,6 @@ class PartII:
                         if interior:
                             total_faces -= PartI().exterior_faces(list(visited))
         return total_faces       
-
-
 
 if __name__ == '__main__':
     print(PartI()())
