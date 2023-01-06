@@ -1,6 +1,10 @@
 import re
 from collections import deque
 
+with open('aoc_day22.txt', 'r') as f:
+    grid, s = f.read().split('\n\n')
+lines = grid.splitlines()
+
 class ThreeDVect():
     
     def __init__(self, x:int=0, y:int=0, z:int=0):
@@ -104,31 +108,77 @@ ID = ThreeDMatriX(VEC_X, VEC_Y, VEC_Z)
 DIRECTIONS = {(0, 1): 0, (1, 0): 1, (0, -1): 2, (-1, 0): 3}
 CUBE_LENGTH = 52
 
-def matrix(rotations: deque[ThreeDVect]) -> ThreeDMatriX:
-    r = rotations.copy()
-    ans = ID
-    while r:
-        ans @= ROTATIONS[r.popleft()]
-    return ans
+class PartII:
 
-def inverse_matrix(rotations: deque[ThreeDVect]) -> ThreeDMatriX:
-    r = rotations.copy()
-    ans = ID
-    while r:
-        ans @= ROTATIONS[-r.pop()]
-    return ans
+    def matrix(self, rotations: deque[ThreeDVect]) -> ThreeDMatriX:
+        r = rotations.copy()
+        ans = ID
+        while r:
+            ans @= ROTATIONS[r.popleft()]
+        return ans
 
-if __name__ == '__main__':
+    def inverse_matrix(self, rotations: deque[ThreeDVect]) -> ThreeDMatriX:
+        r = rotations.copy()
+        ans = ID
+        while r:
+            ans @= ROTATIONS[-r.pop()]
+        return ans
     
-    with open('aoc_day22.txt', 'r') as f:
-        grid, s = f.read().split('\n\n')
-    lines = grid.splitlines()
+    def fold_into_cube(self, p_grid:ThreeDVect, p_cube:ThreeDVect, d_grid:ThreeDVect):
+        fold = [[['X'] * CUBE_LENGTH for _ in range(CUBE_LENGTH)] for _ in range(CUBE_LENGTH)]
+        initial_rot_grid = ROTATIONS[-VEC_Z]
+        cube = Cube(CUBE_LENGTH)
+        visited = set() 
+        rot_grid = initial_rot_grid
+        trans_grid_cube = ID
+        
+        faces = {}
+        folded = {}
+        unfolded = {}
+        rotations_faces = deque([])
+        faces[VEC_Z] = rotations_faces.copy()
     
-    fold = [[['X'] * CUBE_LENGTH for _ in range(CUBE_LENGTH)] for _ in range(CUBE_LENGTH)]
+        while True:
+        
+            next_d_grid = rot_grid * d_grid
+            next_p_grid = p_grid + next_d_grid
+            i, j = next_p_grid.x, next_p_grid.y
+            
+            if (i, j) not in visited and 0 <= i < len(lines) and len(lines[i]) > j >= 0 and lines[i][j] != ' ':
+                p_grid = next_p_grid
+                d_grid = next_d_grid
+                
+                d_cube = trans_grid_cube * d_grid
+                next_p_cube = p_cube + d_cube
+                
+                if cube.is_edge(next_p_cube):
+                    axis = d_cube * cube.get_vect_face(p_cube)
+                    trans_grid_cube = ROTATIONS[axis] @ trans_grid_cube
+                    d_cube = trans_grid_cube * d_grid
+                    next_p_cube += d_cube
+                    if cube.get_vect_face(next_p_cube) not in faces:
+                        rotations_faces.appendleft(axis)
+                        faces[cube.get_vect_face(next_p_cube)] = rotations_faces.copy()
+                
+                p_cube = next_p_cube
+                fold[p_cube.x][p_cube.y][p_cube.z] = lines[i][j]
+                folded[(i, j)] = p_cube
+                unfolded[p_cube] = (i, j)
+                
+                visited.add((i, j))
+                rot_grid = initial_rot_grid
 
-    def move(u0:ThreeDVect, steps:int, dir:ThreeDVect, cube:Cube):
+            elif rot_grid != ROTATIONS[VEC_Z] @ ROTATIONS[VEC_Z]:
+                rot_grid @= ROTATIONS[VEC_Z]
+            else:
+                break
+        
+        return fold, folded, unfolded, faces
+    
+    def walk(self, faces, fold:list[list[list[str]]], u0:ThreeDVect, steps:int, dir:ThreeDVect):
         step = 0
         u = u0
+        cube = Cube(CUBE_LENGTH)
         while step < steps:
             u1 = u + dir
             #print(f'pos:{u}, step:{step}, dir:{dir}')
@@ -139,8 +189,8 @@ if __name__ == '__main__':
                 dir_trans = ROTATIONS[axis] * dir
                 #print(f'edge:{u1}, dir:{dir}')
                 u1 += dir_trans
-                a = inverse_matrix(faces[cube.get_vect_face(u)])
-                b = matrix(faces[cube.get_vect_face(u1)])
+                a = self.inverse_matrix(faces[cube.get_vect_face(u)])
+                b = self.matrix(faces[cube.get_vect_face(u1)])
                 dir = (b @ a) * dir
                 #print(f'after_edge:{u1}, new_dir:{dir}, {b, a}')
                 #dir = dir_trans
@@ -148,78 +198,37 @@ if __name__ == '__main__':
             step += 1
         return u, dir
 
+    def __call__(self):
+        fold, folded, unfolded, faces = self.fold_into_cube(p_grid=ThreeDVect(199, -1, 0),
+                                                            p_cube=ThreeDVect(50, 0, 0),
+                                                            d_grid=ThreeDVect(0, 1, 0))
+        start_steps = int(re.findall(r'^\d+', s)[0])
+        instructions = re.findall(r'([LR])(\d+)', s)
+        start_pos = folded[(0, 50)]
+        cube = Cube(CUBE_LENGTH)
+        start_dir = self.matrix(faces[cube.get_vect_face(start_pos)]) * ThreeDVect(0, 1, 0)
+        u, dir = self.walk(faces, fold, start_pos, start_steps, start_dir)
 
-    p_grid = ThreeDVect(199, -1, 0)
-    p_cube = ThreeDVect(50, 0, 0)
-    d_grid = ThreeDVect(0, 1, 0)
-    initial_rot_grid = ROTATIONS[-VEC_Z]
-    cube = Cube(CUBE_LENGTH)
-    visited = set() 
-    rot_grid = initial_rot_grid
-    trans_grid_cube = ID
-    
-    faces = {}
-    folded = {}
-    unfolded = {}
-    rotations_faces = deque([])
-    faces[VEC_Z] = rotations_faces.copy()
+        for instruction in instructions:
+            rot, steps = instruction; steps = int(steps)
+            if rot == 'L':
+                dir = ROTATIONS[cube.get_vect_face(u)] * dir
+            else:
+                dir = ROTATIONS[-cube.get_vect_face(u)] * dir
+            u, dir = self.walk(faces, fold, u, steps, dir)    
         
-    while True:
-        
-        next_d_grid = rot_grid * d_grid
-        next_p_grid = p_grid + next_d_grid
-        i, j = next_p_grid.x, next_p_grid.y
-        
-        if (i, j) not in visited and 0 <= i < len(lines) and len(lines[i]) > j >= 0 and lines[i][j] != ' ':
-            p_grid = next_p_grid
-            d_grid = next_d_grid
-            
-            d_cube = trans_grid_cube * d_grid
-            next_p_cube = p_cube + d_cube
-            
-            if cube.is_edge(next_p_cube):
-                axis = d_cube * cube.get_vect_face(p_cube)
-                trans_grid_cube = ROTATIONS[axis] @ trans_grid_cube
-                d_cube = trans_grid_cube * d_grid
-                next_p_cube += d_cube
-                if cube.get_vect_face(next_p_cube) not in faces:
-                    rotations_faces.appendleft(axis)
-                    faces[cube.get_vect_face(next_p_cube)] = rotations_faces.copy()
-            
-            p_cube = next_p_cube
-            fold[p_cube.x][p_cube.y][p_cube.z] = lines[i][j]
-            folded[(i, j)] = p_cube
-            unfolded[p_cube] = (i, j)
-            
-            visited.add((i, j))
-            rot_grid = initial_rot_grid
+        x, y = unfolded[u]
+        d = self.inverse_matrix(faces[cube.get_vect_face(u)]) * dir
+        print(d, x, y)
+        print((x + 1) * 1000 + (y + 1) * 4 + DIRECTIONS[(d.x, d.y)])
+        print(instructions[-1])
+        print(lines[0][49], lines[0][50])
 
-        elif rot_grid != ROTATIONS[VEC_Z] @ ROTATIONS[VEC_Z]:
-            rot_grid @= ROTATIONS[VEC_Z]
-        else:
-            break
+
+if __name__ == '__main__':
+    print(PartII()())
     
-    start_steps = int(re.findall(r'^\d+', s)[0])
-    instructions = re.findall(r'([LR])(\d+)', s)
-    start_pos = folded[(0, 50)]
-    start_dir = matrix(faces[cube.get_vect_face(start_pos)]) * ThreeDVect(0, 1, 0)
-    #print(faces)
-    u, dir = move(start_pos, start_steps, start_dir, cube)
-    
-    for instruction in instructions:
-        rot, steps = instruction; steps = int(steps)
-        if rot == 'L':
-            dir = ROTATIONS[cube.get_vect_face(u)] * dir
-        else:
-            dir = ROTATIONS[-cube.get_vect_face(u)] * dir
-        u, dir = move(u, steps, dir, cube)    
-    
-    x, y = unfolded[u]
-    d = inverse_matrix(faces[cube.get_vect_face(u)]) * dir
-    print(d, x, y)
-    print((x + 1) * 1000 + (y + 1) * 4 + DIRECTIONS[(d.x, d.y)])
-    print(instructions[-1])
-    print(lines[0][49], lines[0][50])
+
 
     
 
