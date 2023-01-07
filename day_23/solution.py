@@ -1,4 +1,5 @@
 from collections import deque
+import time
 
 with open('aoc_day23.txt', 'r') as f:
     lines = f.read().splitlines()
@@ -69,14 +70,15 @@ class PartI:
             neigh = i + 2 * di, j + 2 * dj
             if neigh in elves and elves[neigh] >> 8 and elves[neigh] & ALL == OPPOSITES[elf & ALL]:
                 visited.add(neigh)
-                elves[(i, j)] >>= 8
-                elves[neigh] >>= 8    
+                elves[(i, j)] = 1
+                elves[neigh] = 1    
             else:
-                elves[(i + di, j + dj)] = elves[(i , j)] >> 8
+                elves[(i + di, j + dj)] = 1
                 del elves[(i , j)]
         return elves
 
     def __call__(self, elves_og, prio_og):
+        s = time.time()
         elves = elves_og.copy()
         prio = prio_og.copy()
         for _ in range(self.ROUNDS):
@@ -87,24 +89,43 @@ class PartI:
         i_max = max(i for i, _ in elves)
         j_min = min(j for _, j in elves)
         j_max = max(j for _, j in elves)
-        return (1 + i_max - i_min) * (1 +  j_max - j_min) - len(elves)
+        e = time.time()
+        print(f'answer part I: {(1 + i_max - i_min) * (1 +  j_max - j_min) - len(elves)} in {e - s:.4f}s')
     
 class PartII:
+
+    @staticmethod
+    def first_half(elves_og, prio):
+        elves = elves_og.copy()
+        loners = 0
+        for i, j in elves:
+            neighbors = PartI.get_neighbors(elves, (i, j))
+            if not neighbors:
+                loners += 1
+                continue
+            for side in prio:
+                if not neighbors & side:
+                    elves[(i, j)] <<= 8 
+                    elves[(i, j)] |= side
+                    break
+        return elves, loners
    
     def __call__(self, elves_og, prio_og):
+        s = time.time()
         rounds = 0
         elves = elves_og.copy()
         prio = prio_og.copy()
+        L = len(ELVES)
         while True:
-            elves1 = elves.copy()
-            elves1 = PartI.first_half(elves1, prio)
-            elves1 = PartI.second_half(elves1)
+            elves, loners = PartII.first_half(elves, prio)
+            if loners == L:
+                e = time.time()
+                print(f'answer part II: {rounds + 1} in {e - s:.4f}s')
+                break
+            elves = PartI.second_half(elves)
             prio.rotate(-1)
             rounds += 1
-            if elves1 == elves:
-                return rounds
-            elves = elves1
 
 if __name__ == '__main__':
-    print(PartI()(ELVES, PRIO))
-    print(PartII()(ELVES, PRIO))
+    PartI()(ELVES, PRIO)
+    PartII()(ELVES, PRIO)
