@@ -15,27 +15,40 @@ NE = (-1, 1)
 NW = (-1, -1)
 SE = (1, 1)
 SW = (1, -1)
-DIRECTIONS = {0: N, 2: S, 1: W, 3: E}
-INV_DIV = {v : k for k, v in DIRECTIONS.items()}
-NORTH = {NE, N, NW}
-EAST = {NE, E, SE}
-SOUTH = {SE, S, SW}
-WEST = {W, SW, NW}
-PRIO = deque([N, S, W, E])
-MAP_ = {N: NORTH, S: SOUTH, E: EAST, W: WEST}
 
+PRIO = deque([int('111', 2), int('1110000', 2), int('11100', 2), int('11000001', 2)])
+MAP_ = {int('111', 2): N, int('1110000', 2): S, int('11100', 2): W, int(' 11000001', 2): E}
+ALL = int('11111111', 2)
+OPPOSITES = {int('111', 2): int('1110000', 2),
+            int('1110000', 2): int('111', 2),
+            int('11100', 2): int('11000001', 2),
+            int('11000001', 2): int('11100', 2)}
+                 
 class PartI:
     ROUNDS = 10
+    @staticmethod
+    def get_neighbors(elves, key):
+        assert key in elves, 'Please provide actual elf'
+        ans = 0
+        bit_mask = 1
+        i, j = key
+        for di, dj in [NE, N, NW, W, SW, S, SE, E]:
+            if (i + di, j + dj) in elves:
+                ans |= bit_mask
+            bit_mask <<= 1
+        return ans
+
     @staticmethod
     def first_half(elves_og, prio):
         elves = elves_og.copy()
         for i, j in elves:
-            if not any((i + di, j + dj) in elves for di, dj in {N, S, E, W, NW, NE, SW, SE}):
+            neighbors = PartI.get_neighbors(elves, (i, j))
+            if not neighbors:
                 continue
             for side in prio:
-                if not any((i + di, j + dj) in elves for di, dj in MAP_[side]):
-                    elves[(i, j)] <<= 2 
-                    elves[(i, j)] += INV_DIV[side]
+                if not neighbors & side:
+                    elves[(i, j)] <<= 8 
+                    elves[(i, j)] |= side
                     break
         return elves
 
@@ -49,17 +62,17 @@ class PartI:
                 continue 
             visited.add((i, j))
             elf = elves[(i, j)]
-            if not elf >> 2:
+            if not elf >> 8:
                 continue
-            d = elf & 3
-            di, dj = DIRECTIONS[d]
+            d = elf & ALL
+            di, dj = MAP_[d]
             neigh = i + 2 * di, j + 2 * dj
-            if neigh in elves and elves[neigh] >> 2 and elves[neigh] & 3 == (d + 2) % 4:
+            if neigh in elves and elves[neigh] >> 8 and elves[neigh] & ALL == OPPOSITES[elf & ALL]:
                 visited.add(neigh)
-                elves[(i, j)] = 1
-                elves[neigh] = 1    
+                elves[(i, j)] >>= 8
+                elves[neigh] >>= 8    
             else:
-                elves[(i + di, j + dj)] = 1
+                elves[(i + di, j + dj)] = elves[(i , j)] >> 8
                 del elves[(i , j)]
         return elves
 
